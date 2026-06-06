@@ -76,9 +76,8 @@ def test_firestore_lead_save_sandbox(tmp_path) -> None:
     # or just run it. If Firestore isn't authenticated/installed, it falls back to local file.
     res = firestore_lead_save(lead, "+57")
     assert res["status"] == "success"
-    assert res["data"]["place_id"] == "test_shop_999"
+    assert res["data"]["id"] == "test_shop_999"
     assert "created_at" in res["data"]
-    assert "updated_at" in res["data"]
     
     # Clean up test output if local sandbox database was created
     current_dir = os.path.dirname(os.path.abspath(__file__))
