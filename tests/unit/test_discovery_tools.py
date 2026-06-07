@@ -19,7 +19,6 @@ import pytest
 from agents.discovery.tools.discovery_tools import (
     encode_lat_lng_to_plus8,
     google_places_search,
-    geo_perimeter_check,
     firestore_lead_save,
 )
 
@@ -28,22 +27,6 @@ def test_encode_lat_lng_to_plus8() -> None:
     code = encode_lat_lng_to_plus8(4.6438, -74.0628)
     assert len(code) == 8
     assert code.startswith("67P7")
-
-def test_geo_perimeter_check_priority() -> None:
-    # Bogotá Chapinero coordinates (mapped to 67M7XW22)
-    # 3.95125, -74.09875 -> code: 67M7XW22
-    res = geo_perimeter_check(3.95125, -74.09875)
-    assert res["status"] == "success"
-    assert res["data"]["is_priority"] is True
-    assert res["data"]["sector_name"] == "Bogotá - Chapinero"
-    assert res["data"]["plus8_code"] == "67M7XW22"
-
-def test_geo_perimeter_check_non_priority() -> None:
-    # Coordinate outside pilot zones (e.g. London: 51.5074, -0.1278)
-    res = geo_perimeter_check(51.5074, -0.1278)
-    assert res["status"] == "success"
-    assert res["data"]["is_priority"] is False
-    assert "Fuera de zona" in res["data"]["sector_name"]
 
 def test_google_places_search_sandbox() -> None:
     # Ensure maps key is not present/mocked for sandbox test
@@ -55,6 +38,9 @@ def test_google_places_search_sandbox() -> None:
         assert res["status"] == "success"
         assert len(res["data"]) > 0
         assert res["data"][0]["place_id"] == "ch_pet_001"
+        assert res["data"][0]["email"] == "huellitas@chapinero.com"
+        assert "semana" in res["data"][0]["schedule"]
+        assert len(res["data"][0]["schedule"]["semana"]) == 7
     finally:
         if orig_key:
             os.environ["GOOGLE_MAPS_API_KEY"] = orig_key

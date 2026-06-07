@@ -29,11 +29,11 @@ def test_agent_initialization() -> None:
     assert root_agent.name == "higo_discovery_agent"
     assert root_agent.model.model == "gemini-2.5-flash"
     assert "Director de Expansión de Higo" in root_agent.instruction
-    assert len(root_agent.tools) == 3
+    assert len(root_agent.tools) == 2
 
 
-def test_agent_run_non_priority() -> None:
-    """Tests the agent's response when given a location outside the priority sectors (e.g. London)."""
+def test_agent_run_global() -> None:
+    """Tests the agent's response when given a location (e.g. London)."""
     session_service = InMemorySessionService()
     session = session_service.create_session_sync(user_id="test_user", app_name="test")
     runner = Runner(agent=root_agent, session_service=session_service, app_name="test")
@@ -41,7 +41,7 @@ def test_agent_run_non_priority() -> None:
     message = types.Content(
         role="user",
         parts=[types.Part.from_text(
-            text="Por favor prospecta en las coordenadas Lat: 51.5074, Lng: -0.1278."
+            text="Por favor prospecta en la ubicación Lat: 51.5074, Lng: -0.1278, PlusCode8: 9C3XGV22, ISO3: GBR, phone_code: +44."
         )]
     )
 
@@ -64,9 +64,9 @@ def test_agent_run_non_priority() -> None:
                     if part.text:
                         response_text += part.text
 
-        # The agent should state that the coordinates are outside the prioritized perimeter
+        # The agent should successfully prospect and return structured JSON
         response_lower = response_text.lower()
-        assert "fuera" in response_lower or "outside" in response_lower or "perímetro" in response_lower
+        assert "summary" in response_lower or "leads" in response_lower or "pet" in response_lower
     except Exception as e:
         # If credentials are not present, skip execution failures gracefully
         err_msg = str(e).lower()
@@ -77,7 +77,7 @@ def test_agent_run_non_priority() -> None:
 
 
 def test_agent_run_priority() -> None:
-    """Tests the agent's complete ReAct loop when given a priority coordinate (e.g. Bogotá Chapinero)."""
+    """Tests the agent's complete ReAct loop when given a coordinate (e.g. Bogotá Chapinero)."""
     session_service = InMemorySessionService()
     session = session_service.create_session_sync(user_id="test_user", app_name="test")
     runner = Runner(agent=root_agent, session_service=session_service, app_name="test")
@@ -86,7 +86,7 @@ def test_agent_run_priority() -> None:
     message = types.Content(
         role="user",
         parts=[types.Part.from_text(
-            text="Prospecta la zona del piloto en las coordenadas Lat: 3.95125, Lng: -74.09875 y registra las veterinarias."
+            text="Prospecta la zona en las coordenadas Lat: 3.95125, Lng: -74.09875, PlusCode8: 67M7XW22, ISO3: COL, phone_code: +57 y registra las veterinarias."
         )]
     )
 

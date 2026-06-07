@@ -31,18 +31,82 @@ logger = logging.getLogger(__name__)
 # Plus Code base 20 alphabet
 OLC_ALPHABET = "23456789CFGHJMPQRVWX"
 
-# Target priority quadrants for pilot zones in Colombia, Australia, and USA
-PRIORITY_SECTORS = {
-    # Colombia (Bogotá/Medellín)
-    "67M7XW22": "Bogotá - Chapinero",
-    "67M7WW88": "Bogotá - Teusaquillo",
-    "67J3WW88": "Medellín - El Poblado",
-    # Australia (Sydney)
-    "4RRH4C22": "Sydney - Darlinghurst",
-    # USA (Miami / New York)
-    "76QXMX22": "Miami - Brickell",
-    "87G8P222": "New York - Manhattan",
-}
+# Helper to fetch details for a specific place_id from Google Places API
+def get_place_details(place_id: str, api_key: str) -> Dict[str, Any]:
+    """Fetches details for a specific place_id from Google Places API.
+    
+    Requests formatted_phone_number, international_phone_number, website, and opening_hours.
+    """
+    try:
+        params = {
+            "place_id": place_id,
+            "fields": "formatted_phone_number,international_phone_number,website,opening_hours",
+            "key": api_key
+        }
+        url = f"https://maps.googleapis.com/maps/api/place/details/json?{urllib.parse.urlencode(params)}"
+        req = urllib.request.Request(url, headers={"User-Agent": "HigoAgent/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            
+        if res_data.get("status") == "OK":
+            return res_data.get("result", {})
+        else:
+            logger.warning(f"Google Places Details error for {place_id}: {res_data.get('status')}")
+            return {}
+    except Exception as e:
+        logger.error(f"Failed to fetch details for place {place_id}: {str(e)}")
+        return {}
+
+
+def map_google_opening_hours(opening_hours: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Maps Google Places opening_hours structure to HorarioWeekModelV2 format."""
+    if not opening_hours or "periods" not in opening_hours:
+        return None
+    
+    # Initialize semana: 0=Monday, ..., 6=Sunday
+    semana = [{"isOpen": False, "ranges": []} for _ in range(7)]
+    
+    periods = opening_hours.get("periods", [])
+    # If open 24/7, Google Places might return a single period with open day 0 time "0000" and no close
+    if len(periods) == 1 and "close" not in periods[0] and periods[0].get("open", {}).get("time") == "0000":
+        for day in range(7):
+            semana[day] = {
+                "isOpen": True,
+                "ranges": [{"start": "00:00", "end": "23:59"}]
+            }
+        return {"semana": semana}
+
+    for period in periods:
+        open_data = period.get("open")
+        if not open_data:
+            continue
+        open_day = open_data.get("day") # 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        open_time = open_data.get("time") # "HHMM"
+        
+        if open_day is None or open_time is None:
+            continue
+            
+        # Map Google day (0-6, Sun-Sat) to Dart day (0-6, Mon-Sun)
+        dart_day = (open_day - 1) % 7
+        
+        # Format HHMM to HH:mm
+        start_formatted = f"{open_time[:2]}:{open_time[2:]}" if len(open_time) == 4 else "00:00"
+        
+        close_data = period.get("close")
+        if close_data:
+            close_time = close_data.get("time")
+            end_formatted = f"{close_time[:2]}:{close_time[2:]}" if close_time and len(close_time) == 4 else "23:59"
+        else:
+            end_formatted = "23:59"
+            
+        semana[dart_day]["isOpen"] = True
+        semana[dart_day]["ranges"].append({
+            "start": start_formatted,
+            "end": end_formatted
+        })
+        
+    return {"semana": semana}
+
 
 # Pre-populated high-quality mock data for sandbox testing without API keys
 MOCK_LEADS_DATABASE = [
@@ -52,9 +116,18 @@ MOCK_LEADS_DATABASE = [
         "plus_code": "67M7XW22+H5",
         "address": "Calle 60 #9-23, Bogotá, Colombia",
         "phone": "+57 312 3456789",
+        "email": "huellitas@chapinero.com",
         "lat": 4.6438,
         "lng": -74.0628,
         "category": "Veterinary & Pet Shop",
+        "schedule": {
+            "semana": [
+                {"isOpen": True, "ranges": [{"start": "08:00", "end": "18:00"}]} for _ in range(5)
+            ] + [
+                {"isOpen": True, "ranges": [{"start": "09:00", "end": "14:00"}]},
+                {"isOpen": False, "ranges": []}
+            ]
+        }
     },
     {
         "place_id": "ch_pet_002",
@@ -62,9 +135,15 @@ MOCK_LEADS_DATABASE = [
         "plus_code": "67M7XW22+J8",
         "address": "Carrera 13 #58-40, Bogotá, Colombia",
         "phone": "+57 300 9876543",
+        "email": "contacto@palaciomascotas.com",
         "lat": 4.6450,
         "lng": -74.0640,
         "category": "Pet Shop",
+        "schedule": {
+            "semana": [
+                {"isOpen": True, "ranges": [{"start": "09:00", "end": "19:00"}]} for _ in range(6)
+            ] + [{"isOpen": False, "ranges": []}]
+        }
     },
     {
         "place_id": "te_vet_001",
@@ -72,9 +151,15 @@ MOCK_LEADS_DATABASE = [
         "plus_code": "67M7WW88+A1",
         "address": "Diagonal 40 #16-22, Bogotá, Colombia",
         "phone": "+57 310 1112223",
+        "email": "sanmartin@clinicavet.com",
         "lat": 4.6295,
         "lng": -74.0750,
         "category": "Veterinary Clinic",
+        "schedule": {
+            "semana": [
+                {"isOpen": True, "ranges": [{"start": "00:00", "end": "23:59"}]} for _ in range(7)
+            ]
+        }
     },
     {
         "place_id": "med_pet_001",
@@ -82,9 +167,18 @@ MOCK_LEADS_DATABASE = [
         "plus_code": "67J3WW88+F2",
         "address": "Calle 10 #34-12, Medellín, Colombia",
         "phone": "+57 315 7654321",
+        "email": "info@pobladopetcare.com",
         "lat": 6.2083,
         "lng": -75.5678,
         "category": "Pet Shop & Grooming",
+        "schedule": {
+            "semana": [
+                {"isOpen": True, "ranges": [{"start": "08:00", "end": "17:00"}]} for _ in range(5)
+            ] + [
+                {"isOpen": True, "ranges": [{"start": "08:00", "end": "12:00"}]},
+                {"isOpen": False, "ranges": []}
+            ]
+        }
     }
 ]
 
@@ -102,7 +196,6 @@ def encode_lat_lng_to_plus8(lat: float, lng: float) -> str:
     """
     code = olc.encode(lat, lng, 8)
     return code.replace("+", "")
-
 
 
 def google_places_search(plus8_code: str, iso3: Optional[str] = None) -> Dict[str, Any]:
@@ -127,9 +220,11 @@ def google_places_search(plus8_code: str, iso3: Optional[str] = None) -> Dict[st
                     "plus_code": str,
                     "address": str,
                     "phone": Optional[str],
+                    "email": Optional[str],
                     "lat": float,
                     "lng": float,
-                    "category": str
+                    "category": str,
+                    "schedule": Optional[dict]
                 },
                 ...
             ],
@@ -169,9 +264,15 @@ def google_places_search(plus8_code: str, iso3: Optional[str] = None) -> Dict[st
                     "plus_code": f"{cleaned_code}+F1",
                     "address": f"Calle de Pruebas {cleaned_code}, Colombia",
                     "phone": "+57 300 0000000",
+                    "email": f"contacto@trebol{cleaned_code.lower()}.com",
                     "lat": 4.6438,  # Default center lat
                     "lng": -74.0628, # Default center lng
                     "category": "Pet Shop",
+                    "schedule": {
+                        "semana": [
+                            {"isOpen": True, "ranges": [{"start": "08:00", "end": "18:00"}]} for _ in range(6)
+                        ] + [{"isOpen": False, "ranges": []}]
+                    }
                 }
             ]
             message_suffix = " (Generated generic sandbox result)"
@@ -215,19 +316,34 @@ def google_places_search(plus8_code: str, iso3: Optional[str] = None) -> Dict[st
         structured_data = []
         
         for r in results:
+            place_id = r.get("place_id")
+            
+            # Fetch details to get contact details (phone, website, opening hours)
+            details = get_place_details(place_id, api_key) if place_id else {}
+            
+            phone = details.get("international_phone_number") or details.get("formatted_phone_number") or r.get("formatted_phone_number")
+            website = details.get("website")
+            email = None
+            if website and "@" in website:
+                email = website
+                
+            schedule = map_google_opening_hours(details.get("opening_hours"))
+            
             # Try to get plus_code from results
             place_plus_code = r.get("plus_code", {}).get("global_code", f"{cleaned_code}+")
             location = r.get("geometry", {}).get("location", {})
             
             structured_data.append({
-                "place_id": r.get("place_id"),
+                "place_id": place_id,
                 "name": r.get("name"),
                 "plus_code": place_plus_code,
                 "address": r.get("formatted_address", ""),
-                "phone": r.get("formatted_phone_number", None),  # Might require Places Details call if None
+                "phone": phone,
+                "email": email,
                 "lat": location.get("lat", 0.0),
                 "lng": location.get("lng", 0.0),
                 "category": "Pet Shop" if "pet" in str(r.get("types")).lower() else "Veterinary",
+                "schedule": schedule
             })
             
         return {
@@ -245,61 +361,6 @@ def google_places_search(plus8_code: str, iso3: Optional[str] = None) -> Dict[st
         }
 
 
-def geo_perimeter_check(lat: float, lng: float) -> Dict[str, Any]:
-    """Checks if a given coordinate is within the Higo prioritary 270m² Plus Code pilot perimeter.
-    
-    This ensures that commercial prospecting remains within the designated high-value zones
-    of Bogotá or Medellín to focus onboarding operations efficiently.
-    
-    Args:
-        lat: Latitude of the target location.
-        lng: Longitude of the target location.
-        
-    Returns:
-        A structured dictionary indicating verification status:
-        {
-            "status": "success" | "error",
-            "data": {
-                "is_priority": bool,
-                "plus8_code": str,
-                "sector_name": str
-            },
-            "message": str
-        }
-    """
-    try:
-        plus8_code = encode_lat_lng_to_plus8(lat, lng)
-        sector_name = PRIORITY_SECTORS.get(plus8_code)
-        
-        if sector_name:
-            is_priority = True
-            message = f"Coordinates ({lat}, {lng}) fall inside priority sector: {sector_name} ({plus8_code})."
-        else:
-            is_priority = False
-            # Check for generic Colombia pilot city prefix match
-            if plus8_code.startswith("67M7") or plus8_code.startswith("67M8"):
-                sector_name = "Bogotá - Fuera de sector prioritario"
-            elif plus8_code.startswith("67J3") or plus8_code.startswith("67J4"):
-                sector_name = "Medellín - Fuera de sector prioritario"
-            else:
-                sector_name = "Fuera de zona piloto (Colombia)"
-            message = f"Coordinates ({lat}, {lng}) are outside the prioritized perimeter. Sector: {sector_name} ({plus8_code})."
-            
-        return {
-            "status": "success",
-            "data": {
-                "is_priority": is_priority,
-                "plus8_code": plus8_code,
-                "sector_name": sector_name
-            },
-            "message": message
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "data": {},
-            "message": f"Error performing geo perimeter check: {str(e)}"
-        }
 
 
 def encode_geohash(latitude: float, longitude: float, precision: int = 10) -> str:
@@ -403,7 +464,7 @@ def firestore_lead_save(shop_data: Dict[str, Any], phone_code: str) -> Dict[str,
         "plusCode": shop_data["plus_code"],
         "latitude": lat,
         "longitude": lng,
-        "schedule": shop_data.get("schedule"),
+        "schedule": shop_data.get("schedule"), # Alineado 
         "createdAt": now_str,
         "geohash": encode_geohash(lat, lng),
         "offerings": shop_data.get("offerings", [shop_data.get("category", "Pet Shop").lower()]),

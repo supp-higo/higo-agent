@@ -11,13 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-You can add your unit tests here.
-This is where you test your business logic, including agent functionality,
-data processing, and other core components of your application.
-"""
+"""Session-wide setup and check for GCP authentication in integration tests."""
+
+import pytest
+import google.auth
+from google.auth.transport.requests import Request
 
 
-def test_dummy() -> None:
-    """Placeholder - replace with real tests."""
-    assert 1 == 1
+@pytest.fixture(scope="session", autouse=True)
+def check_gcp_auth():
+    """Checks if GCP credentials are available and valid, skipping tests if not."""
+    try:
+        credentials, _ = google.auth.default()
+        credentials.refresh(Request())
+    except Exception as e:
+        pytest.skip(
+            f"Skipping integration tests because GCP credentials are expired or unavailable: {e}"
+        )

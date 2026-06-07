@@ -29,8 +29,8 @@ def test_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
-def test_endpoint_non_priority(test_client: TestClient) -> None:
-    """Verifies that querying a non-priority location via HTTP POST returns 200 and stops prospección."""
+def test_endpoint_global(test_client: TestClient) -> None:
+    """Verifies that querying a location via HTTP POST returns 200 and prospects successfully."""
     try:
         # Step 1: Create session
         session_resp = test_client.post("/apps/discovery_agent/users/test_user_http/sessions")
@@ -39,14 +39,14 @@ def test_endpoint_non_priority(test_client: TestClient) -> None:
         session_id = session_data.get("id") or session_data.get("session_id")
         assert session_id is not None
 
-        # Step-2: Run agent with non-priority coordinates (London)
+        # Step-2: Run agent with coordinates
         payload = {
             "app_name": "discovery_agent",
             "user_id": "test_user_http",
             "session_id": session_id,
             "new_message": {
                 "role": "user",
-                "parts": [{"text": "Prospecta en las coordenadas Lat: 51.5074, Lng: -0.1278"}]
+                "parts": [{"text": "Prospecta en la ubicación Lat: 51.5074, Lng: -0.1278, PlusCode8: 9C3XGV22, ISO3: GBR, phone_code: +44."}]
             },
             "streaming": False
         }
@@ -58,7 +58,7 @@ def test_endpoint_non_priority(test_client: TestClient) -> None:
         assert isinstance(events, list)
         assert len(events) > 0
         
-        # Verify the response tells us it's out of the priority zone
+        # Verify the response contains leads or summary
         response_text = ""
         for event in events:
             if "content" in event and "parts" in event["content"]:
@@ -67,7 +67,7 @@ def test_endpoint_non_priority(test_client: TestClient) -> None:
                         response_text += part["text"]
                         
         response_lower = response_text.lower()
-        assert "fuera" in response_lower or "outside" in response_lower or "perímetro" in response_lower
+        assert "summary" in response_lower or "leads" in response_lower or "pet" in response_lower
     except Exception as e:
         err_msg = str(e).lower()
         if "credentials" in err_msg or "auth" in err_msg or "location" in err_msg:

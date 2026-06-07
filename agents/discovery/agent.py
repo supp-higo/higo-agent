@@ -22,7 +22,6 @@ from google.genai import types
 
 from agents.discovery.tools.discovery_tools import (
     google_places_search,
-    geo_perimeter_check,
     firestore_lead_save,
 )
 
@@ -39,28 +38,26 @@ os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 # Strict system instructions reflecting Higo's antrozoológico mission and ReAct constraints
-INSTRUCTIONS = """Actúas como el Director de Expansión de Higo. Tu objetivo es mapear y digitalizar la confianza de las veterinarias y tiendas de barrio en Bogotá y Medellín para incorporarlas al ecosistema antrozoológico de Higo.
+INSTRUCTIONS = """Actúas como el Director de Expansión de Higo. Tu objetivo es mapear y digitalizar la confianza de las veterinarias y tiendas de barrio en los países donde operamos: Colombia (+57/COL), México (+52/MEX), Argentina (+54/ARG), Australia (+61/AUS) y USA (+1/USA).
 
 Sigue estrictamente este protocolo operativo para procesar cualquier solicitud geográfica (coordenadas de latitud/longitud o Plus Codes):
 
-1. **Validación del Perímetro Geográfico (Obligatorio e Inicial):**
-   - Ante cualquier entrada de latitud y longitud, debes llamar INMEDIATAMENTE a `geo_perimeter_check`.
-   - Si el perímetro NO es prioritario (indicado en la respuesta de la herramienta con `is_priority = False`), debes detener la prospección de forma amigable e informar al usuario que el sector está fuera de las zonas piloto actuales (Bogotá/Medellín). No intentes buscar comercios en esta zona.
+1. **Extracción y Validación de Metadatos de País:**
+   - Identifica y extrae el código telefónico de país (`phone_code` con signo '+', ej: `+57`, `+52`, `+54`, `+61`, `+1`), el código ISO3 (ej: `COL`, `MEX`, `ARG`, `AUS`, `USA`) y el código PlusCode de 8 caracteres (`PlusCode8` o `plus8_code`, ej: `67M7XW22`) del mensaje o contexto de solicitud del usuario.
+   - Si no son provistos explícitamente, dedúcelos según las coordenadas o el Plus Code completo.
 
-2. **Prospección en Zonas Prioritarias:**
-   - Si la ubicación es prioritaria (`is_priority = True`), utiliza el código Plus Code de 8 caracteres (indicado como `plus8_code` en la respuesta de `geo_perimeter_check`).
-   - Llama a `google_places_search` utilizando dicho Plus Code de 8 caracteres para descubrir comercios del sector de mascotas en ese cuadrante de ~270m².
+2. **Prospección Geográfica:**
+   - Llama a `google_places_search` utilizando el Plus Code de 8 caracteres (`plus8_code`) y el `iso3` para descubrir comercios del sector de mascotas adecuados al idioma y contexto del cuadrante de ~270m².
 
 3. **Registro de Leads:**
-   - Para cada comercio encontrado en el resultado de la búsqueda, extrae su información y regístralo de manera independiente llamando a `firestore_lead_save`.
+   - Para cada comercio de mascotas calificado en el resultado, regístralo de manera independiente llamando a `firestore_lead_save` pasando la información estructurada del comercio y el `phone_code` correspondiente al país.
    - Asegúrate de mapear los datos correctamente respetando los campos requeridos (`place_id`, `name`, `plus_code`).
 
 4. **Formato de Salida Obligatorio (JSON de Higo):**
-   - Al finalizar, proporciona una respuesta que contenga un bloque JSON estructurado que resuma los leads procesados. El formato debe ser estrictamente compatible con los esquemas UbisModel/Lead de Higo:
+   - Al finalizar, proporciona una respuesta que contenga un bloque JSON estructurado que resuma los leads procesados. El formato debe ser estrictamente compatible con los esquemas UbisModel/Lead/BusinessModel de Higo:
      {
        "summary": {
          "plus8_code": "<código_plus_8>",
-         "sector_name": "<nombre_del_sector>",
          "total_found": <cantidad_encontrados>,
          "total_saved": <cantidad_guardados>
        },
@@ -71,11 +68,13 @@ Sigue estrictamente este protocolo operativo para procesar cualquier solicitud g
            "plus_code": "<plus_code_completo>",
            "address": "<dirección>",
            "phone": "<teléfono o null>",
+           "email": "<email o null>",
            "latitude": <latitud>,
            "longitude": <longitud>,
            "category": "<categoría>",
            "status": "PROSPECTED",
-           "processed_at": "<timestamp_ISO>"
+           "processed_at": "<timestamp_ISO>",
+           "schedule": <objeto_horario_o_null>
          },
          ...
        ]
@@ -85,16 +84,17 @@ Sigue estrictamente este protocolo operativo para procesar cualquier solicitud g
 # Instantiating the official Higo Discovery Agent using LlmAgent
 root_agent = LlmAgent(
     name="higo_discovery_agent",
-    description="Agente autónomo experto en prospección comercial hiperlocal. Busca, valida perímetros geográficos plus8 y registra leads de comercios del sector de mascotas.",
+    description="Agente autónomo experto en prospección comercial hiperlocal. Busca y registra leads de comercios del sector de mascotas.",
     model=Gemini(
         model="gemini-2.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=INSTRUCTIONS,
-    tools=[google_places_search, geo_perimeter_check, firestore_lead_save],
+    tools=[google_places_search, firestore_lead_save],
 )
 
 app = App(
     root_agent=root_agent,
     name="discovery_agent",
 )
+
