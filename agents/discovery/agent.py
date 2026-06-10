@@ -95,6 +95,6 @@ root_agent = LlmAgent(
 
 app = App(
     root_agent=root_agent,
-    name="discovery_agent",
+    name="discovery",
 )
 

@@ -29,16 +29,17 @@ steps:
     args:
       - "-c"
       - |
-        uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > gemini_fullstack/app_utils/.requirements.txt
-        uv run python -m gemini_fullstack.app_utils.deploy \
+        uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > agents/shared/.requirements.txt
+        uv run python -m agents.shared.deploy \
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
-          --source-packages=./gemini_fullstack \
-          --entrypoint-module=gemini_fullstack.agent_engine_app \
+          --source-packages=./agents \
+          --entrypoint-module=agents.discovery.agent_engine_app \
           --entrypoint-object=agent_engine \
-          --requirements-file=gemini_fullstack/app_utils/.requirements.txt \
+          --requirements-file=agents/shared/.requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
-          --set-env-vars="COMMIT_SHA=${COMMIT_SHA},LOGS_BUCKET_NAME=${_LOGS_BUCKET_NAME_PROD}"
+          --set-env-vars="COMMIT_SHA=${COMMIT_SHA},LOGS_BUCKET_NAME=${_LOGS_BUCKET_NAME_PROD}" \
+          --set-secrets="GOOGLE_MAPS_API_KEY=PLACES_API_KEY_SECRET"
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
