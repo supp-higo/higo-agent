@@ -1,0 +1,32 @@
+{
+  "Persian Cat": {
+    "characteristics": "Gato de pelaje largo y denso, braquicéfalo (cara chata). Temperamento tranquilo, dormilón y afectuoso.",
+    "daily_needs": "Cepillado diario obligatorio del pelaje para evitar nudos y limpieza regular de sus conductos lagrimales.",
+    "nutrition_tip": "Alimento húmedo para promover la hidratación, previniendo problemas urinarios comunes en gatos persas.",
+    "growth_stages": {
+      "puppy": "Monitorear su respiración y acostumbrar desde pequeño al cepillado y baño.",
+      "adult": "Limitar premios grasosos; al ser muy sedentario, tiende a la obesidad rápidamente.",
+      "senior": "Facilitar el acceso a lugares elevados mediante rampas o banquetas si tiene artritis."
+    }
+  },
+  "Mixed-breed": {
+    "characteristics": "Gato mestizo o criollo. Muy activo, cazador, independiente pero apegado a sus cuidadores.",
+    "daily_needs": "Enriquecimiento ambiental (rascadores altos, repisas) para saciar su necesidad de explorar y marcar territorio.",
+    "nutrition_tip": "Dieta balanceada con alto contenido de taurina. Incentivar la toma de agua con fuentes de agua corriente.",
+    "growth_stages": {
+      "puppy": "Juegos interactivos de caza estructurados para canalizar su energía nocturna.",
+      "adult": "Controlar raciones para evitar sobrepeso tras la esterilización.",
+      "senior": "Estimulación de la hidratación y chequeo de función renal anual."
+    }
+  },
+  "default": {
+    "characteristics": "Gato hogareño de temperamento curioso y activo.",
+    "daily_needs": "Juegos con caña o juguetes interactivos y rascadores.",
+    "nutrition_tip": "Alimento balanceado seco combinado con sobres de comida húmeda.",
+    "growth_stages": {
+      "puppy": "Alimento rico en nutrientes específicos para crecimiento de gatitos.",
+      "adult": "Controlar que no ingiera plantas tóxicas y mantener limpia su bandeja de arena.",
+      "senior": "Suplementos de omega-3 y revisiones periódicas de dentadura."
+    }
+  }
+}

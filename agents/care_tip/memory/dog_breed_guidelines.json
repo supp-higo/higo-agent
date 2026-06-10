@@ -1,0 +1,32 @@
+{
+  "German Shepherd Dog": {
+    "characteristics": "Raza grande, activa, propensa a problemas articulares (displasia de cadera). Muy inteligente y obediente.",
+    "daily_needs": "Mínimo 40-60 minutos de ejercicio físico moderado y estimulación mental diaria.",
+    "nutrition_tip": "Alimento con buen aporte de proteína y condroprotectores (glucosamina, condroitina) para proteger sus codos y caderas.",
+    "growth_stages": {
+      "puppy": "Evitar saltos bruscos o sobreesfuerzo físico para proteger las placas de crecimiento óseo.",
+      "adult": "Monitorear su cadera y mantener un peso óptimo para evitar estrés en sus articulaciones.",
+      "senior": "Paseos cortos regulares y masajes suaves para aliviar rigidez."
+    }
+  },
+  "Mixed-breed": {
+    "characteristics": "Mascotas mestizas, de genética variada y gran resiliencia. Muy únicas en su personalidad y necesidades físicas.",
+    "daily_needs": "Paseos diarios y juegos de olfato para canalizar su energía e instinto curioso.",
+    "nutrition_tip": "Dieta balanceada acorde a su tamaño y peso para evitar sobrepeso, que es común en ambientes hogareños.",
+    "growth_stages": {
+      "puppy": "Socialización temprana con otros perros y entornos diversos.",
+      "adult": "Asegurar ejercicio diario adaptado a su nivel de energía individual.",
+      "senior": "Chequeos veterinarios semestrales para detectar a tiempo signos de envejecimiento."
+    }
+  },
+  "default": {
+    "characteristics": "Perro de raza general, con necesidades estándar de juego y afecto.",
+    "daily_needs": "Paseos al menos dos veces al día y agua fresca disponible.",
+    "nutrition_tip": "Croquetas premium de alta calidad que se adapten a su tamaño.",
+    "growth_stages": {
+      "puppy": "Alimentación específica para cachorro de 3 a 4 veces al día.",
+      "adult": "Ración diaria dividida en 2 porciones.",
+      "senior": "Suplementación preventiva y paseos tranquilos."
+    }
+  }
+}

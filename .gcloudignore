@@ -1,0 +1,17 @@
+.gcloudignore
+.git
+.gitignore
+.pytest_cache
+.venv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+tests/
+notebooks/
+higo_control/
+higo_vip/
+higo_core/
+higo_back/
+higo_brain/
