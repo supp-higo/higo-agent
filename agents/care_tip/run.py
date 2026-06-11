@@ -24,6 +24,10 @@ project_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+
 from agents.care_tip.agent import care_tip_agent
 
 def clean_json_response(text: str) -> str:
@@ -83,14 +87,20 @@ Pautas específicas de su raza y comportamiento:
     
     try:
         # Run agent
-        response = care_tip_agent.run(prompt)
+        session_service = InMemorySessionService()
+        session = session_service.create_session_sync(user_id="anonymous", app_name="care_tip")
+        runner = Runner(agent=care_tip_agent, session_service=session_service, app_name="care_tip")
+        content = types.Content(role="user", parts=[types.Part.from_text(text=prompt)])
+        
+        events = runner.run(user_id="anonymous", session_id=session.id, new_message=content)
+        
         # Extract response text
         response_text = ""
-        if hasattr(response, "content") and response.content:
-            if hasattr(response.content, "parts") and response.content.parts:
-                response_text = "".join(part.text for part in response.content.parts if hasattr(part, "text") and part.text)
-        elif isinstance(response, str):
-            response_text = response
+        for event in events:
+            if event.content and event.content.parts:
+                for part in event.content.parts:
+                    if part.text:
+                        response_text += part.text
             
         json_output = clean_json_response(response_text)
         # Validate output is valid JSON

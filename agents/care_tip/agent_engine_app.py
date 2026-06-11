@@ -7,9 +7,16 @@ import vertexai
 from dotenv import load_dotenv
 from google.cloud import logging as google_cloud_logging
 from fastapi import FastAPI, Request
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+
 from agents.care_tip.agent import care_tip_agent as higo_care_tip_agent
 from agents.shared.telemetry import setup_telemetry
 from agents.care_tip.run import clean_json_response
+
+# Initialize Session Service for ADK runner
+session_service = InMemorySessionService()
 
 # Load environment variables from .env file at runtime
 load_dotenv()
@@ -66,13 +73,16 @@ Pautas específicas de su raza y comportamiento:
 """
     
     try:
-        response = higo_care_tip_agent.run(prompt)
+        session = await session_service.create_session(user_id="anonymous", app_name="care_tip")
+        runner = Runner(agent=higo_care_tip_agent, session_service=session_service, app_name="care_tip")
+        content = types.Content(role="user", parts=[types.Part.from_text(text=prompt)])
+        
         response_text = ""
-        if hasattr(response, "content") and response.content:
-            if hasattr(response.content, "parts") and response.content.parts:
-                response_text = "".join(part.text for part in response.content.parts if hasattr(part, "text") and part.text)
-        elif isinstance(response, str):
-            response_text = response
+        async for event in runner.run_async(user_id="anonymous", session_id=session.id, new_message=content):
+            if event.content and event.content.parts:
+                for part in event.content.parts:
+                    if part.text:
+                        response_text += part.text
             
         json_output = clean_json_response(response_text)
         result_json = json.loads(json_output)

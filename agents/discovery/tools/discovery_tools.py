@@ -245,10 +245,10 @@ def google_places_search(plus8_code: str, iso3: Optional[str] = None) -> Dict[st
             )
         }
 
-    api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    api_key = os.environ.get("GOOGLE_MAPS_API_KEY") or os.environ.get("PLACES_API_KEY")
     if not api_key:
         # Sandbox / Fallback Mode: return mock pet shops in that sector
-        logger.info("GOOGLE_MAPS_API_KEY not found. Operating in sandbox fallback mode.")
+        logger.info("Neither GOOGLE_MAPS_API_KEY nor PLACES_API_KEY was found. Operating in sandbox fallback mode.")
         matching_mock_leads = [
             lead for lead in MOCK_LEADS_DATABASE
             if lead["plus_code"].startswith(cleaned_code)
@@ -287,6 +287,17 @@ def google_places_search(plus8_code: str, iso3: Optional[str] = None) -> Dict[st
 
     # Real API Integration via traditional text search
     try:
+        # Map ISO3 to full country name for better Google Places Text Search resolution
+        iso3_to_country = {
+            "COL": "Colombia",
+            "MEX": "Mexico",
+            "ARG": "Argentina",
+            "AUS": "Australia",
+            "USA": "United States",
+        }
+        country_name = iso3_to_country.get(iso3.upper(), iso3) if iso3 else ""
+        country_suffix = f" {country_name}" if country_name else ""
+
         # Determine keywords based on country language to prevent zero results in US/Australia
         is_english_speaking = iso3.upper() in ("USA", "AUS", "GBR", "CAN") if iso3 else False
         if is_english_speaking:
@@ -294,7 +305,7 @@ def google_places_search(plus8_code: str, iso3: Optional[str] = None) -> Dict[st
         else:
             keywords = "pet shop OR veterinaria OR peluqueria canina OR tienda de mascotas"
 
-        query = f"{keywords} in plus code {cleaned_code}"
+        query = f"{keywords} in plus code {cleaned_code}{country_suffix}"
         params = {
             "query": query,
             "key": api_key
