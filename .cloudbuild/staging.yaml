@@ -15,6 +15,7 @@
 steps:
   - name: "python:3.12-slim"
     id: install-dependencies
+    dir: 'CODE'
     entrypoint: /bin/bash
     args:
       - "-c"
@@ -25,6 +26,7 @@ steps:
 
   - name: "python:3.12-slim"
     id: deploy-staging
+    dir: 'CODE'
     entrypoint: /bin/bash
     args:
       - "-c"
@@ -46,6 +48,7 @@ steps:
 
   - name: gcr.io/cloud-builders/gcloud
     id: fetch-auth-token
+    dir: 'CODE'
     entrypoint: /bin/bash
     args:
       - "-c"
@@ -55,6 +58,7 @@ steps:
   # Load Testing
   - name: "python:3.12-slim"
     id: load_test
+    dir: 'CODE'
     entrypoint: /bin/bash
     args:
       - "-c"
@@ -72,6 +76,7 @@ steps:
   # Export Load Test Results to GCS
   - name: gcr.io/cloud-builders/gcloud
     id: export-results-to-gcs
+    dir: 'CODE'
     entrypoint: /bin/bash
     args:
       - "-c"
