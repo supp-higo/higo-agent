@@ -62,21 +62,21 @@ graph TD
     classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#000;
     classDef success fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#000;
 
-    A[Usuario descarga la app Higo VIP]:::trigger --> B[Usuario va a la sección de Comunidad en Home]:::process
-    B --> C[Habilita opción de geolocalización]:::process
-    C --> D[Se inicia proceso de Cloud Functions con la ubicación]:::process
+    A[User downloads Higo VIP App]:::trigger --> B[User navigates to Community section in Home]:::process
+    B --> C[Enable geolocation option]:::process
+    C --> D[Cloud Function triggers with user location]:::process
     
-    D --> E{¿Esta zona ha sido<br>descubierta antes?}:::decision
+    D --> E{Has this area been<br>discovered before?}:::decision
     
-    E -- No --> F[Se invoca al Agente de Descubrimiento en Background]:::process
-    E -- Sí --> H[Usuario recibe info de ubicación, tiendas y mascotas cercanas]:::success
+    E -- No --> F[Higo Discovery Agent invoked in background]:::process
+    E -- Yes --> H[User receives local info, shops, and nearby pets]:::success
     
     F --> H
-    H --> I[Fin del flujo de cara al Usuario]:::success
+    H --> I[End of user-facing flow]:::success
     
     %% Trabajo asíncrono del agente
-    F --> J[Agente usa Google Places API para buscar y extraer leads]:::process
-    J --> K[Agente almacena nuevos leads calificados para Higo Op]:::success
+    F --> J[Agent queries Google Places API to find and extract leads]:::process
+    J --> K[Agent saves new qualified leads to Firestore]:::success
 ```
 
 ### 2. Care Tip Agent Flow (B2C Engagement)
@@ -89,21 +89,21 @@ graph TD
     classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#000;
     classDef success fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#000;
 
-    A[Usuario descarga la app Higo VIP y abre el Home]:::trigger --> B[¿El usuario ya<br>está registrado?]:::decision
+    A[User downloads Higo VIP App and opens Home]:::trigger --> B[Is the user<br>already registered?]:::decision
     
-    B -- No --> C[Usuario se registra en la plataforma]:::process
-    C --> D{¿El usuario ya tiene<br>mascotas registradas?}:::decision
+    B -- No --> C[User registers on the platform]:::process
+    C --> D{Does the user have<br>registered pets?}:::decision
     
-    B -- Sí --> D
+    B -- Yes --> D
     
-    D -- No --> E[Usuario registra a sus mascotas<br>especie, raza, género, edad]:::process
-    E --> F[Usuario oprime el botón para obtener tip del día]:::process
+    D -- No --> E[User registers pets: species, breed, gender, age]:::process
+    E --> F[User taps button to get tip of the day]:::process
     
-    D -- Sí --> F
+    D -- Yes --> F
     
-    F --> G[Agente recibe la plantilla de tip general del día]:::process
-    G --> H[Gemini personaliza el tip usando la metadata de las mascotas]:::process
-    H --> I[Usuario recibe su Daily Tip personalizado]:::success
+    F --> G[Agent retrieves the standard daily care tip template]:::process
+    G --> H[Gemini customizes tip details using specific pet metadata]:::process
+    H --> I[User receives personalized Daily Care Tip]:::success
 ```
 
 ---
